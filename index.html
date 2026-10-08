@@ -751,7 +751,7 @@ footer{border-top:1px solid var(--rule-2);background:var(--surface);margin-top:1
   <section class="view" id="view-words" role="tabpanel" aria-label="词汇学习" hidden>
     <header class="sec-head">
       <h2>词汇学习</h2>
-      <p>词库 = 六级大纲 5500 词（含音标与释义）+ 近几年新增词汇。标注规则：在你提供的 6 套真题里出现 ≥2 次、或属于选词填空词库、或为新增词 → 标为「高频必考」；其余为「认知词」。真题例句与原文搭配来自这 6 套卷。</p>
+      <p>词库 = 六级大纲 5500 词（含音标与释义）+ 近几年新增词汇。标注规则：在你提供的 12 套真题里出现 ≥2 次、或属于选词填空词库、或为新增词 → 标为「高频必考」；其余为「认知词」。真题例句与原文搭配来自这 12 套卷。</p>
     </header>
     <div class="panel" id="wordPlan"></div>
     <div class="panel" id="wordToday"></div>
@@ -1445,6 +1445,7 @@ const state = {
   mastered: store.get("mastered", {}),
   wordDay: store.get("wordDay", { date: "", queue: [], idx: 0, done: 0, right: 0 }),
   wordSize: store.get("wordSize", 20),
+  wordBank: store.get("wordBank", "all"),
   wordRevealed: false,
   vocab: { bank: "all", level: "all", topic: "all", q: "", show: 40, mem: false }
 };
@@ -2501,13 +2502,24 @@ function wordStatus(w){
   if (!st.due || st.due <= todayKey()) return "due";
   return "learning";
 }
+const WORD_BANK_NAME = { all: "全部词库", new: "新增词汇", basic: "认知词", high: "高频必考", fav: "我的生词" };
+
 function buildTodayQueue(force){
   const size = state.wordSize;
   if (!force && state.wordDay.date === todayKey() && state.wordDay.queue.length) return state.wordDay;
+  /* 取词范围：按用户选定的词库（新增词汇 / 认知词 / 高频必考 / 我的生词） */
+  const BANK_FILTER = {
+    all:   () => true,
+    new:   x => x.src === "new",
+    basic: x => x.lv === "basic",
+    high:  x => x.lv === "high",
+    fav:   x => isFavWord(x.w)
+  };
   /* 优先排：高频必考 → 阅读高频词 → 写作翻译主题词 */
   const prio = x => (x.lv === "high" ? 0 : 1000) + ((x.tp || []).includes("reading") ? 0 : 200)
     + (((x.tp || []).includes("writing") || (x.tp || []).includes("translation")) ? 0 : 100) - Math.min(99, x.f || 0);
-  const pool = wordPool().slice().sort((a, b) => prio(a) - prio(b));
+  const pick = BANK_FILTER[state.wordBank] || BANK_FILTER.all;
+  const pool = wordPool().filter(pick).slice().sort((a, b) => prio(a) - prio(b));
   const due = pool.filter(x => wordStatus(x.w) === "due").map(x => x.w);
   const fresh = pool.filter(x => wordStatus(x.w) === "new").map(x => x.w);
   const queue = due.concat(fresh).slice(0, size);
@@ -2526,8 +2538,14 @@ function renderWords(){
     else if (st === "new") stats.fresh++;
   });
   const pct = day.queue.length ? Math.min(100, Math.round(day.done / day.queue.length * 100)) : 100;
+  const bankPick = { all: () => true, new: x => x.src === "new", basic: x => x.lv === "basic",
+                     high: x => x.lv === "high", fav: x => isFavWord(x.w) }[state.wordBank] || (() => true);
+  const bankPool = pool.filter(bankPick);
+  const bankSize = bankPool.length;
+  const bankFresh = bankPool.filter(x => wordStatus(x.w) === "new").length;
+  const bankDue = bankPool.filter(x => wordStatus(x.w) === "due").length;
   $("#wordToday").innerHTML = `
-    <h3 class="panel-title">今日任务<span class="meta">${todayKey()}　每天 ${state.wordSize} 词（可在词表下方调整）</span></h3>
+    <h3 class="panel-title">今日任务<span class="meta">${todayKey()}　${WORD_BANK_NAME[state.wordBank] || "全部词库"}　每天 ${state.wordSize} 词（可在词表下方调整）</span></h3>
     <div class="stat-row">
       <div class="stat"><div class="k">今日进度</div><div class="v">${day.done}<small> / ${day.queue.length}</small></div></div>
       <div class="stat"><div class="k">词库总量</div><div class="v">${stats.total}<small> 词</small></div></div>
@@ -2535,6 +2553,15 @@ function renderWords(){
       <div class="stat"><div class="k">待复习</div><div class="v">${stats.due}<small> 词</small></div></div>
     </div>
     <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
+    <div class="filters" style="margin:12px 0 2px">
+      <button class="filter" data-wbank="all" aria-pressed="${String(state.wordBank === "all")}">全部词库</button>
+      <button class="filter" data-wbank="new" aria-pressed="${String(state.wordBank === "new")}">新增词汇</button>
+      <button class="filter" data-wbank="basic" aria-pressed="${String(state.wordBank === "basic")}">认知词</button>
+      <button class="filter" data-wbank="high" aria-pressed="${String(state.wordBank === "high")}">高频必考</button>
+      <button class="filter" data-wbank="fav" aria-pressed="${String(state.wordBank === "fav")}">我的生词</button>
+    </div>
+    <p class="hint" style="margin:0 0 12px">先选「背哪一本」：本词库共 <b>${bankSize}</b> 词，
+      未掌握 <b>${bankFresh}</b> 词、到期待复习 <b>${bankDue}</b> 词。换词库会自动重排今日任务，旧进度不会丢。</p>
     <div class="btn-row">
       <button class="btn" id="wordStart">${day.done >= day.queue.length && day.queue.length ? "今天背完了，再来一轮" : "开始背单词"}</button>
       <button class="btn ghost" id="wordReset">重新生成本日单词</button>
@@ -2553,6 +2580,13 @@ function renderWords(){
     store.set("wordSize", state.wordSize);
     buildTodayQueue(true);
     renderWords();
+  }));
+  $$("[data-wbank]").forEach(b => b.addEventListener("click", () => {
+    state.wordBank = b.dataset.wbank;
+    store.set("wordBank", state.wordBank);
+    buildTodayQueue(true);
+    renderWords();
+    renderWordCard(true);
   }));
 }
 function renderWordCard(show){
