@@ -2523,7 +2523,7 @@ function buildTodayQueue(force){
   const due = pool.filter(x => wordStatus(x.w) === "due").map(x => x.w);
   const fresh = pool.filter(x => wordStatus(x.w) === "new").map(x => x.w);
   const queue = due.concat(fresh).slice(0, size);
-  state.wordDay = { date: todayKey(), queue, idx: 0, done: 0, right: 0 };
+  state.wordDay = { date: todayKey(), queue, idx: 0, done: 0, right: 0, repeat: {} };
   store.set("wordDay", state.wordDay);
   return state.wordDay;
 }
@@ -2569,7 +2569,7 @@ function renderWords(){
       <button class="btn ghost" data-size="20">每天 20 词</button>
       <button class="btn ghost" data-size="30">每天 30 词</button>
     </div>
-    <p class="hint">记忆安排：认识一次 +1 级，复习间隔 1/2/4/7/15/30 天；点「不认识」会退回起点，明天再来。</p>`;
+    <p class="hint">记忆安排：认识一次 +1 级，复习间隔 1/2/4/7/15/30 天；点「不认识」会退回起点、自动收进「我的生词」，并在本轮末尾再出现一次（同一个词一天最多补 2 次），明天继续复习。</p>`;
   $("#wordStart").addEventListener("click", () => {
     if (day.done >= day.queue.length) buildTodayQueue(true);
     renderWordCard(true);
@@ -2625,7 +2625,18 @@ function renderWordCard(show){
   const advance = ok => {
     const cur = wordState(w);
     if (ok){ cur.ok++; cur.s = Math.min(INTERVALS.length, (cur.s || 0) + 1); cur.due = addDays(INTERVALS[cur.s - 1] || 1); }
-    else { cur.ng++; cur.s = 0; cur.due = addDays(1); }
+    else {
+      cur.ng++; cur.s = 0; cur.due = addDays(1);
+      /* 不认识：① 自动收进「我的生词」 ② 同一个词今天最多再追加 2 次，当轮再过 */
+      const added = addWordFav(wordPool().find(x => x.w === w) || { w }, "背单词 · 不认识");
+      day.repeat = day.repeat || {};
+      const times = day.repeat[w] || 0;
+      if (times < 2){
+        day.repeat[w] = times + 1;
+        day.queue.push(w);
+      }
+      toast(added ? "已收进「我的生词」，本轮再过一遍" : "本轮再过一遍");
+    }
     state.words[w] = cur;
     store.set("words", state.words);
     day.done++;
@@ -2777,6 +2788,22 @@ function renderVocab(){
     b.setAttribute("aria-pressed", on ? "true" : "false");
     b.textContent = "☆ " + (on ? "已收藏" : "收藏到生词本");
   }));
+}
+
+/* 背单词里点「不认识」时自动收进生词本（只加不删） */
+function addWordFav(entry, from){
+  const key = favKey(entry.w);
+  if (state.wrong.some(w => w.key === key)) return false;
+  state.wrong.unshift({
+    key, item: key, mode: "word", from: from || "背单词 · 不认识",
+    stem: entry.w + (entry.ph ? "  " + entry.ph : ""),
+    correct: "", picked: null,
+    why: (entry.cn || "") + (entry.eg ? "　例：" + entry.eg.s : ""),
+    at: Date.now()
+  });
+  saveWrong();
+  updateWrongBadge();
+  return true;
 }
 
 function toggleWordFav(entry){
