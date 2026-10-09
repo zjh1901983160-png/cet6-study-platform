@@ -590,7 +590,7 @@ footer{border-top:1px solid var(--rule-2);background:var(--surface);margin-top:1
         2026 年下半年全国大学英语六级笔试：<b>12 月 12 日 15:00–17:25</b><br>
         起点 <b>389</b> 分 · 保底 <b>425</b> 分 · 冲刺 <b>500+</b> · 主攻 <b>仔细阅读</b>
       </p>
-      <button type="button" class="sync-chip" id="syncChip">☁ 云同步：未开启 · 点这里开启</button>
+      <button type="button" class="sync-chip" id="syncChip">☁ 云同步：正在同步…</button>
     </div>
     <div class="hud">
       <div class="hud-item soon">
@@ -796,30 +796,16 @@ footer{border-top:1px solid var(--rule-2);background:var(--surface);margin-top:1
   <section class="view" id="view-plan" role="tabpanel" aria-label="备考规划" hidden>
     <header class="sec-head">
       <h2>备考规划</h2>
-      <p>按今天到 12 月 12 日的实际天数排的十周计划，重心压在仔细阅读上。每周的完成标记存在本机，下次打开还在；开启下面的云同步后，手机和电脑共用同一份。</p>
+      <p>按今天到 12 月 12 日的实际天数排的十周计划，重心压在仔细阅读上。每周的完成标记存在本机，下次打开还在；云同步会自动把手机、微信、QQ、电脑对齐成同一份。</p>
     </header>
     <div class="panel" id="syncPanel">
-      <h3 class="panel-title">云同步<span class="meta" id="syncState">未开启</span></h3>
-      <div id="syncOff">
-        <p class="hint">现在进度只留在「这一台浏览器」里，所以电脑、手机、微信、QQ 打开都是各算各的。开启后，背词记录、生词本、十周计划勾选、成绩和限时刷题记录会自动同步到所有设备，换设备打开就是最新进度。</p>
-        <ol class="howto" style="margin-top:12px">
-          <li>先登录自己的 GitHub 账号，打开 <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=cet6-progress-sync" target="_blank" rel="noopener">github.com/settings/tokens/new</a>（权限已经替你勾好了，只勾 gist），滑到最下面点「Generate token」。</li>
-          <li>复制生成的 <code>ghp_</code> 开头令牌，粘贴到下面输入框，点「连接并同步」。</li>
-          <li>在手机 / 微信 / QQ 的浏览器里打开本页，粘贴同一个令牌连接一次。以后不用再操作，打开永远是最新进度。</li>
-        </ol>
-        <div style="margin-top:14px">
-          <div class="hint" style="margin:0 0 6px">GitHub 令牌（只存在本机浏览器，不会写进网页，别人看不到）</div>
-          <input class="tool-input" type="password" id="syncTokenIn" style="width:100%" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="GitHub 令牌">
-        </div>
-        <div class="btn-row"><button class="btn" id="syncConnect">连接并同步</button></div>
+      <h3 class="panel-title">云同步<span class="meta" id="syncState">等待同步</span></h3>
+      <p class="hint" id="syncInfo"></p>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn" id="syncNow">立即同步</button>
+        <button class="btn ghost" id="syncPush">用本机覆盖云端</button>
       </div>
-      <div id="syncOn" hidden>
-        <p class="hint" id="syncInfo"></p>
-        <div class="btn-row" style="margin-top:12px">
-          <button class="btn" id="syncNow">立即同步</button>
-          <button class="btn ghost" id="syncOut">断开本机</button>
-        </div>
-      </div>
+      <p class="hint">进度寄存在公共 MQTT 服务器（broker.emqx.io）上一个随机命名的房间里，房间号写在本页代码里：别人不知道房间号就读不到、也改不了，但它不是银行级的私密存储，别往里填敏感内容。它只做「把各设备对齐」，本机进度始终是最完整的底稿。</p>
     </div>
     <div class="panel">
       <h3 class="panel-title">分数目标分解<span class="meta">总缺口 36 分</span></h3>
@@ -838,7 +824,7 @@ footer{border-top:1px solid var(--rule-2);background:var(--surface);margin-top:1
   <section class="view" id="view-wrong" role="tabpanel" aria-label="错题本" hidden>
     <header class="sec-head">
       <h2>待复习本</h2>
-      <p>在真题精讲里点 ☆ 收藏的题都会留在这里，作为二轮复习清单。数据存在浏览器本机；在「备考规划 → 云同步」里开启后，换浏览器、换手机也会自动带过来。</p>
+      <p>在真题精讲里点 ☆ 收藏的题都会留在这里，作为二轮复习清单。数据存在浏览器本机，换浏览器、换手机也会自动同步过来（见「备考规划 → 云同步」）。</p>
     </header>
     <div class="filters" id="wrongFilters"></div>
     <div class="list" id="wrongList"></div>
@@ -1467,14 +1453,12 @@ const store = {
 
 /* 云同步状态（P 节初始化；这里先声明，方便 store.set 回调） */
 let sync = null;
-const SYNC_KEYS = ["scores", "wrong", "tasks", "words", "mastered", "wordDay", "wordSize", "wordBank", "examSession", "examRecords"];
+const CLOUD_KEYS = ["scores", "wrong", "tasks", "words", "mastered", "wordDay", "wordSize", "wordBank", "examSession", "examRecords"];
 function onLocalChange(key){
-  if (!sync || SYNC_KEYS.indexOf(key) < 0) return;
+  if (!sync || CLOUD_KEYS.indexOf(key) < 0) return;
   sync.meta[key] = Date.now();
   store.set("syncMeta", sync.meta);
-  if (!sync.token || !sync.gist) return;
-  clearTimeout(sync.timer);
-  sync.timer = setTimeout(() => syncPush(true), 2500);
+  cloudSyncSoon();          /* 本机进度变了，几秒后自动上传 */
 }
 
 const state = {
@@ -3935,23 +3919,23 @@ function renderCountdown(){
 }
 
 /* =====================================================================
-   P. 云同步
-   把一个小的进度文件放在你自己的 GitHub 私密 gist 里，多设备自动双向同步。
+   P. 云同步（零设置：打开页面就自动同步）
+   进度打包成一条 MQTT「保留消息」，寄存在公共服务器上的专属房间里：
+   任何设备打开本页都能直接读到最新进度，不用注册、不用登录、不用扫码。
    每个 key 各带自己的修改时间：谁最后改的谁说了算，不会整包互相覆盖。
    ===================================================================== */
-const SYNC_FILE = "cet6-progress.json";
-const SYNC_STATE_MAP = {
+const CLOUD_URL = "wss://broker.emqx.io:8084/mqtt";
+const CLOUD_TOPIC = "cet6/study/av56jo9sdtbulmex";   /* 房间号：相当于钥匙，别外传 */
+const CLOUD_STATE_MAP = {
   scores: "scores", wrong: "wrong", tasks: "taskDone", words: "words", mastered: "mastered",
   wordDay: "wordDay", wordSize: "wordSize", wordBank: "wordBank",
   examSession: "examSession", examRecords: "examRecords"
 };
 
 sync = {
-  token: store.get("syncToken", ""),
-  gist: store.get("syncGist", ""),
   meta: store.get("syncMeta", {}),
   at: store.get("syncAt", 0),
-  busy: false, timer: null, lastPull: 0, needPush: false, msg: ""
+  busy: false, timer: null, again: false, lastTry: 0, msg: ""
 };
 
 function rawGet(key){
@@ -3962,21 +3946,88 @@ function fmtTime(ts){
   const d = new Date(ts), p = n => (n < 10 ? "0" + n : "" + n);
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-function errHint(e){
-  const m = (e && e.message) || "未知错误";
-  return /Failed to fetch|NetworkError|Load failed|network/i.test(m) ? "连不上 GitHub，换个网络再试" : m;
+
+/* ---------------------------------------------------------------
+   极简 MQTT over WebSocket（CONNECT / SUBSCRIBE / PUBLISH QoS1 / PUBACK）
+   WebSocket 不受跨域预检限制，所以任何浏览器都能直接连。
+   --------------------------------------------------------------- */
+function mqttStr(str){
+  const b = new TextEncoder().encode(str);
+  return [b.length >> 8, b.length & 255].concat(Array.prototype.slice.call(b));
 }
-function ghApi(path, opts){
-  const o = Object.assign({ method: "GET" }, opts);
-  o.headers = Object.assign({ Authorization: "Bearer " + sync.token, Accept: "application/vnd.github+json" }, o.headers || {});
-  if (o.body) o.headers["Content-Type"] = "application/json";
-  return fetch("https://api.github.com" + path, o);
+function mqttPacket(type, flags, body){
+  const head = [(type << 4) | flags];
+  let n = body.length;
+  do { let d = n % 128; n = Math.floor(n / 128); if (n > 0) d |= 128; head.push(d); } while (n > 0);
+  return new Uint8Array(head.concat(body));
+}
+function mqttOpen(clientId, timeoutMs){
+  return new Promise((resolve, reject) => {
+    let ws;
+    try { ws = new WebSocket(CLOUD_URL, "mqtt"); }
+    catch (e){ reject(new Error("这台浏览器不支持 WebSocket")); return; }
+    ws.binaryType = "arraybuffer";
+    const conn = { pid: 1, acks: {}, onMessage: null, closed: false };
+    let buf = new Uint8Array(0), settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true; conn.close(); reject(new Error("连接超时，换个网络再试"));
+    }, timeoutMs || 12000);
+    const send = bytes => { if (!conn.closed) try { ws.send(bytes); } catch (e){} };
+    conn.close = () => { conn.closed = true; try { ws.close(); } catch (e){} };
+    ws.onopen = () => {
+      send(mqttPacket(1, 0, mqttStr("MQTT").concat([4, 2, 0, 30], mqttStr(clientId))));
+    };
+    ws.onerror = () => {
+      if (settled) return;
+      settled = true; clearTimeout(timer); conn.close(); reject(new Error("连不上同步服务器"));
+    };
+    ws.onclose = () => { conn.closed = true; };
+    ws.onmessage = ev => {
+      const chunk = new Uint8Array(ev.data);
+      const all = new Uint8Array(buf.length + chunk.length);
+      all.set(buf); all.set(chunk, buf.length); buf = all;
+      while (buf.length > 1){
+        const type = buf[0] >> 4, flags = buf[0] & 15;
+        let mul = 1, len = 0, p = 1, bad = false;
+        while (p < buf.length){
+          const d = buf[p++]; len += (d & 127) * mul; mul *= 128;
+          if (!(d & 128)) break;
+          if (mul > 2097152){ bad = true; break; }
+        }
+        if (bad){ buf = new Uint8Array(0); break; }
+        if (buf.length < p + len) break;            /* 半包：等下一帧再拼 */
+        const body = buf.slice(p, p + len);
+        buf = buf.slice(p + len);
+        if (type === 2){                             /* CONNACK */
+          if (!settled){ settled = true; clearTimeout(timer); resolve(conn); }
+        } else if (type === 3){                      /* PUBLISH */
+          const qos = (flags >> 1) & 3;
+          let i = 2 + ((body[0] << 8) | body[1]);
+          if (qos > 0){ const pid = (body[i] << 8) | body[i + 1]; i += 2; send(mqttPacket(4, 0, [pid >> 8, pid & 255])); }
+          const text = new TextDecoder().decode(body.slice(i));
+          if (conn.onMessage) conn.onMessage(text);
+        } else if (type === 4){                      /* PUBACK */
+          const pid = (body[0] << 8) | body[1];
+          if (conn.acks[pid]){ conn.acks[pid](); delete conn.acks[pid]; }
+        }
+      }
+    };
+    conn.subscribe = topic => send(mqttPacket(8, 2, [0, 1].concat(mqttStr(topic), [1])));
+    conn.publish = (topic, text, retain) => new Promise(done => {
+      const pid = conn.pid = conn.pid % 65000 + 1;
+      conn.acks[pid] = done;
+      send(mqttPacket(3, 0x02 | (retain ? 1 : 0),
+        mqttStr(topic).concat([pid >> 8, pid & 255], Array.prototype.slice.call(new TextEncoder().encode(text)))));
+      setTimeout(() => { if (conn.acks[pid]){ delete conn.acks[pid]; done(); } }, 6000);
+    });
+  });
 }
 
 /* 本机快照：每个 key 带上「本机最后修改时间」 */
-function syncSnapshot(){
+function cloudSnapshot(){
   const data = {};
-  SYNC_KEYS.forEach(k => {
+  CLOUD_KEYS.forEach(k => {
     const v = rawGet(k);
     if (v === null){ data[k] = { v: null, t: 0 }; return; }
     if (!sync.meta[k]) sync.meta[k] = Date.now();
@@ -3984,163 +4035,162 @@ function syncSnapshot(){
   });
   return { v: 1, at: Date.now(), data };
 }
-
-function setSyncNote(text, kind){
-  const st = $("#syncState"), chip = $("#syncChip"), on = !!(sync.token && sync.gist);
-  if (st) st.textContent = text;
-  if (chip){
-    chip.dataset.on = on ? "1" : "0";
-    chip.dataset.err = kind === "err" ? "1" : "0";
-    chip.textContent = !on ? "☁ 云同步：未开启 · 点这里开启"
-      : kind === "err" ? "☁ 云同步：出错了 · 点这里处理"
-      : "☁ 云同步：已开启 · " + text;
-  }
-}
-function renderSyncPanel(){
-  const on = !!(sync.token && sync.gist);
-  $("#syncOff").hidden = on;
-  $("#syncOn").hidden = !on;
-  if (!on){ setSyncNote("未开启"); return; }
-  $("#syncInfo").innerHTML = (sync.at ? `最近一次同步：<b>${fmtTime(sync.at)}</b>。` : "还没同步过。")
-    + "背词记录、生词本、周计划勾选、成绩、限时刷题记录都已经跟云端打通，改动会在几秒后自动上传，回到本页也会自动拉取最新进度。"
-    + "想在这台设备之外再用，就在那台设备上粘贴同一个令牌连接一次。"
-    + (sync.msg ? `<br><span style="color:var(--red)">${sync.msg}</span>` : "");
-  setSyncNote(sync.msg ? sync.msg : (sync.at ? "已同步 · " + fmtTime(sync.at) : "已开启"), sync.msg ? "err" : "");
-}
-
 function applyRemote(key, v){
-  const field = SYNC_STATE_MAP[key];
+  const field = CLOUD_STATE_MAP[key];
   if (!field) return;
   state[field] = key === "scores" ? Object.assign({}, DEFAULTS, v) : v;
 }
 
-async function syncPush(silent){
-  if (!sync.token || !sync.gist || sync.busy) return;
-  sync.busy = true;
-  try{
-    const body = JSON.stringify({ files: { [SYNC_FILE]: { content: JSON.stringify(syncSnapshot()) } } });
-    const r = await ghApi("/gists/" + sync.gist, { method: "PATCH", body });
-    if (!r.ok) throw new Error(r.status === 401 ? "令牌失效，请重新连接" : "HTTP " + r.status);
-    store.set("syncMeta", sync.meta);
-    sync.at = Date.now(); store.set("syncAt", sync.at);
-    sync.msg = ""; setSyncNote("已同步 · " + fmtTime(sync.at));
-  } catch (e){
-    sync.msg = "上传失败：" + errHint(e); setSyncNote(sync.msg, "err");
-    if (!silent) toast(sync.msg);
-  } finally { sync.busy = false; }
+/* 第一次打通时两边都有旧进度：按类型取并集，谁的进度都不会被对方抹掉 */
+function cloudUnion(key, local, remote){
+  const isMap = o => o && typeof o === "object" && !Array.isArray(o);
+  if (key === "wrong"){                       /* 生词本 / 收藏：按 key 合并去重 */
+    const seen = {}, out = [];
+    [].concat(remote || [], local || []).forEach(it => {
+      if (!it || !it.key || seen[it.key]) return;
+      seen[it.key] = 1; out.push(it);
+    });
+    return out;
+  }
+  if (key === "tasks" || key === "mastered"){  /* 勾选 / 已掌握：只要一边有就算有 */
+    if (!isMap(remote)) return local;
+    if (!isMap(local)) return remote;
+    const out = Object.assign({}, remote);
+    Object.keys(local).forEach(k => { if (local[k]) out[k] = local[k]; });
+    return out;
+  }
+  if (key === "words"){                        /* 背词进度：同一个词取练得多的那份 */
+    if (!isMap(remote)) return local;
+    if (!isMap(local)) return remote;
+    const out = Object.assign({}, remote);
+    Object.keys(local).forEach(k => {
+      const a = remote[k] || {}, b = local[k] || {};
+      const score = x => (x.s || 0) * 10 + (x.ok || 0) - (x.ng || 0);
+      out[k] = score(b) > score(a) ? b : a;
+    });
+    return out;
+  }
+  if (key === "examRecords"){                  /* 套卷记录：按套合并，同套留更完整的一份 */
+    if (!isMap(remote)) return local;
+    if (!isMap(local)) return remote;
+    const out = Object.assign({}, remote);
+    Object.keys(local).forEach(k => {
+      if (!out[k]){ out[k] = local[k]; return; }
+      const t = r => r.finishedAt || r.at || r.startedAt || 0;
+      out[k] = t(local[k]) > t(out[k]) ? local[k] : out[k];
+    });
+    return out;
+  }
+  return local;                                /* 成绩 / 词库设置等：以本机为准 */
 }
 
-async function syncPull(silent){
-  if (!sync.token || !sync.gist || sync.busy) return;
-  if (Date.now() - sync.lastPull < 15000) return;
-  sync.lastPull = Date.now();
+/* 把云端存档合进本机：云端更新就覆盖，本机只有旧进度就取并集 */
+function cloudMerge(doc){
+  if (!doc || !doc.data) return 0;
+  let n = 0;
+  CLOUD_KEYS.forEach(k => {
+    const cell = doc.data[k];
+    if (!cell || cell.v === null || cell.v === undefined) return;
+    const local = rawGet(k);
+    const lt = sync.meta[k] || 0;
+    let next = null, union = false;
+    if (lt === 0 && local !== null && cell.t > 0){
+      next = cloudUnion(k, local, cell.v); union = true;     /* 老设备第一次打通 */
+    } else if (cell.t > lt || (lt === 0 && local === null)){
+      next = cell.v;                                         /* 云端更新 / 本机没有 */
+    } else return;
+    try { localStorage.setItem("cet6." + k, JSON.stringify(next)); } catch (e){}
+    sync.meta[k] = union ? Date.now() : cell.t;
+    applyRemote(k, next);
+    n++;
+  });
+  store.set("syncMeta", sync.meta);
+  return n;
+}
+
+function setCloudStatus(text, kind){
+  const st = $("#syncState"), chip = $("#syncChip");
+  if (st) st.textContent = text;
+  if (chip){
+    chip.dataset.on = (sync.at && kind !== "err") ? "1" : "0";
+    chip.dataset.err = kind === "err" ? "1" : "0";
+    chip.textContent = kind === "err" ? "☁ 云同步：没同步上 · 点这里看"
+      : (sync.at ? "☁ 云同步：已同步 · " + fmtTime(sync.at) : "☁ 云同步：正在同步…");
+  }
+}
+function renderCloudPanel(){
+  const info = $("#syncInfo");
+  if (info){
+    info.innerHTML = "背词记录、生词本、周计划勾选、成绩、限时刷题记录都会自动跟云端对齐："
+      + "打开页面先取最新，本机改动几秒后自动上传。手机上、微信里、QQ 里、电脑上看到的都是同一份。"
+      + (sync.at ? `最近一次同步：<b>${fmtTime(sync.at)}</b>。` : "本页打开后会立刻同步一次。")
+      + (sync.msg ? `<br><span style="color:var(--red)">${sync.msg}</span>` : "");
+  }
+  setCloudStatus(sync.msg ? sync.msg : (sync.at ? "已同步 · " + fmtTime(sync.at) : "等待同步"), sync.msg ? "err" : "");
+}
+function cloudSyncSoon(delay){
+  clearTimeout(sync.timer);
+  sync.timer = setTimeout(() => cloudSync(false), delay == null ? 2500 : delay);
+}
+
+async function cloudSync(force){
+  if (!force){
+    if (sync.busy){ sync.again = true; return; }
+    if (Date.now() - sync.lastTry < 8000) return;   /* 8 秒内不重复连 */
+  }
+  sync.lastTry = Date.now();
   sync.busy = true;
+  if (force) setCloudStatus("正在上传…");
   let got = 0;
   try{
-    const r = await ghApi("/gists/" + sync.gist);
-    if (r.status === 401) throw new Error("令牌失效，请点「断开本机」再重新连接");
-    if (r.status === 404) throw new Error("云端文件不见了，请重新连接");
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const g = await r.json();
-    const f = g.files && g.files[SYNC_FILE];
-    if (!f || f.truncated) throw new Error("云端数据读不出来");
-    const doc = JSON.parse(f.content || "{}");
-    if (!doc || !doc.data) throw new Error("云端数据格式不对");
-    SYNC_KEYS.forEach(k => {
-      const cell = doc.data[k];
-      if (!cell || cell.v === null || cell.v === undefined) return;
-      const lt = sync.meta[k] || 0;
-      if (cell.t > lt || (lt === 0 && rawGet(k) === null)){
-        localStorage.setItem("cet6." + k, JSON.stringify(cell.v));
-        sync.meta[k] = cell.t;
-        applyRemote(k, cell.v);
-        got++;
-      }
-    });
-    store.set("syncMeta", sync.meta);
+    const c = await mqttOpen("cet6-" + Math.random().toString(36).slice(2, 10), 12000);
+    if (!force){
+      /* 订阅后服务器会立刻把「保留消息」（也就是云端存档）推过来 */
+      const remote = await new Promise(resolve => {
+        let done = false;
+        const to = setTimeout(() => { if (!done){ done = true; resolve(null); } }, 4000);
+        c.onMessage = text => { if (!done){ done = true; clearTimeout(to); resolve(text); } };
+        c.subscribe(CLOUD_TOPIC);
+      });
+      if (remote){ try { got = cloudMerge(JSON.parse(remote)); } catch (e){} }
+    } else {
+      CLOUD_KEYS.forEach(k => { if (rawGet(k) !== null) sync.meta[k] = Date.now(); });
+    }
+    if (got) rerenderAll();                            /* 拿到云端数据就马上刷界面 */
+    await c.publish(CLOUD_TOPIC, JSON.stringify(cloudSnapshot()), true);
+    c.close();
     sync.at = Date.now(); store.set("syncAt", sync.at);
-    /* 本机有比云端更新的改动（比如刚才离线时改的）→ 顺手推上去 */
-    sync.needPush = SYNC_KEYS.some(k => (sync.meta[k] || 0) > ((doc.data[k] && doc.data[k].t) || 0));
-    sync.msg = ""; setSyncNote("已同步 · " + fmtTime(sync.at));
-    if (got){ rerenderAll(); if (!silent) toast(`已拉取云端进度（${got} 项）`); }
+    sync.msg = "";
+    if (got) toast(`已从云端同步 ${got} 项进度`);
+    renderCloudPanel();
   } catch (e){
-    sync.msg = "同步失败：" + errHint(e); setSyncNote(sync.msg, "err");
-    if (!silent) toast(sync.msg);
+    sync.msg = "没同步上：" + ((e && e.message) || "未知错误") + "（本机进度不受影响）";
+    renderCloudPanel();
   } finally {
     sync.busy = false;
-    if (sync.needPush){ sync.needPush = false; syncPush(true); }
+    if (sync.again){ sync.again = false; setTimeout(() => cloudSync(false), 1000); }
   }
-}
-
-async function syncConnect(){
-  const input = $("#syncTokenIn"), btn = $("#syncConnect");
-  const token = (input.value || "").trim();
-  if (!token){ toast("先粘贴 GitHub 令牌"); return; }
-  btn.disabled = true; btn.textContent = "正在连接…";
-  const before = sync.token;
-  sync.token = token;
-  try{
-    const me = await ghApi("/user");
-    if (me.status === 401) throw new Error("令牌无效或已过期，请重新生成");
-    if (!me.ok) throw new Error("HTTP " + me.status);
-    const list = await ghApi("/gists?per_page=100");
-    if (!list.ok) throw new Error("读取已有文件失败 HTTP " + list.status);
-    const gists = await list.json();
-    const found = Array.isArray(gists) ? gists.find(g => g.files && g.files[SYNC_FILE]) : null;
-    if (found){
-      sync.gist = found.id;
-    } else {
-      const r = await ghApi("/gists", { method: "POST", body: JSON.stringify({
-        description: "六级学习进度（本平台自动同步，请勿删除）",
-        public: false,
-        files: { [SYNC_FILE]: { content: JSON.stringify(syncSnapshot()) } }
-      })});
-      if (!r.ok) throw new Error("创建云端文件失败 HTTP " + r.status);
-      sync.gist = (await r.json()).id;
-    }
-    store.set("syncToken", sync.token);
-    store.set("syncGist", sync.gist);
-    input.value = "";
-    sync.lastPull = 0; sync.msg = "";
-    await syncPull(false);
-    await syncPush(true);
-    renderSyncPanel();
-    toast(found ? "已连接，已同步云端进度" : "已开启云同步");
-  } catch (e){
-    sync.token = before; sync.gist = store.get("syncGist", ""); sync.msg = "";
-    toast("连接失败：" + errHint(e));
-    renderSyncPanel();
-  } finally {
-    btn.disabled = false; btn.textContent = "连接并同步";
-  }
-}
-function syncDisconnect(){
-  if (!confirm("断开后这台设备不再自动同步（本机已有进度保留）。要继续吗？")) return;
-  sync.token = ""; sync.gist = ""; sync.meta = {}; sync.at = 0; sync.msg = "";
-  store.set("syncToken", ""); store.set("syncGist", ""); store.set("syncMeta", {}); store.set("syncAt", 0);
-  renderSyncPanel();
-  toast("已断开云同步");
 }
 function rerenderAll(){
   renderCountdown(); renderDiagnosis(); renderGoalTable(); renderReal(); renderWordPlan();
   renderWords(); renderVocab(); renderEssay(); renderTrans(); renderWeeks(); renderStrategy();
   renderWrong(); renderExam(); updateWrongBadge();
 }
-function syncInit(){
-  $("#syncConnect").addEventListener("click", syncConnect);
-  $("#syncTokenIn").addEventListener("keydown", e => { if (e.key === "Enter") syncConnect(); });
-  $("#syncNow").addEventListener("click", () => { sync.lastPull = 0; syncPull(false); });
-  $("#syncOut").addEventListener("click", syncDisconnect);
+function cloudInit(){
+  $("#syncNow").addEventListener("click", () => cloudSync(false));
+  $("#syncPush").addEventListener("click", () => {
+    if (confirm("把这一台设备的进度覆盖到云端（其他设备下次打开就以这份为准）。要继续吗？")) cloudSync(true);
+  });
   $("#syncChip").addEventListener("click", () => {
     switchView("plan");
     const p = $("#syncPanel");
     if (p) p.scrollIntoView({ behavior: "smooth", block: "center" });
   });
-  renderSyncPanel();
-  if (sync.token && sync.gist) syncPull(true);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncPull(true); });
-  window.addEventListener("focus", () => syncPull(true));
-  setInterval(() => { if (document.visibilityState === "visible") syncPull(true); }, 60000);
+  renderCloudPanel();
+  cloudSync(false);                                    /* 打开页面就对齐一次 */
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") cloudSync(false); });
+  window.addEventListener("focus", () => cloudSync(false));
+  setInterval(() => { if (document.visibilityState === "visible") cloudSync(false); }, 90000);
 }
 
 function init(){
@@ -4162,7 +4212,7 @@ function init(){
   const view = (location.hash || "#dx").slice(1).split("/")[0];
   if ($("#view-" + view)) switchView(view);
   if ("speechSynthesis" in window) window.speechSynthesis.getVoices();
-  syncInit();
+  cloudInit();
 }
 init();
 </script>
