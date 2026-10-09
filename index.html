@@ -79,6 +79,10 @@ a{color:var(--navy-2)}
 .brand h1{font-size:clamp(20px,3.6vw,30px);letter-spacing:.02em}
 .brand .sub{margin-top:6px;color:var(--ink-3);font-size:13px;line-height:1.6}
 .brand .sub b{color:var(--ink-2);font-weight:600}
+.sync-chip{margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--paper);border:1px solid var(--rule-2);border-radius:14px;font-size:12.5px;color:var(--ink-2)}
+.sync-chip:hover{border-color:var(--navy-2);color:var(--navy);background:var(--navy-soft)}
+.sync-chip[data-on="1"]{background:var(--green-soft);border-color:#C6DED7;color:var(--green)}
+.sync-chip[data-err="1"]{background:var(--red-soft);border-color:#E4C6C8;color:var(--red)}
 .hud{display:flex;gap:22px;align-items:flex-end;border-left:1px solid var(--rule);padding-left:22px}
 .hud-item{display:flex;flex-direction:column;align-items:flex-start;line-height:1}
 .hud-num{font-family:var(--font-num);font-size:clamp(24px,4vw,34px);font-weight:600}
@@ -371,7 +375,8 @@ details.acc > summary .tip{font-weight:400;font-size:12px;color:var(--ink-3)}
 .vcard{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);box-shadow:var(--shadow)}
 .vcard-head{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:11px 14px}
 .vcard-head .word{font-family:var(--font-exam);font-size:17px;font-weight:600}
-.vcard-head .ph{font-family:var(--font-exam);font-size:13px;color:var(--ink-3);margin-left:8px}
+.vcard-head .ph{font-family:var(--font-exam);font-size:13px;color:var(--ink-3);margin-left:6px;padding:1px 7px;border:1px solid transparent;border-radius:12px}
+.vcard-head .ph:hover,.vcard-head .ph:active{color:var(--navy);background:var(--navy-soft);border-color:#CFDDE9}
 .vcard-head .mini{margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--ink-3)}
 .vtag{padding:1px 7px;border-radius:10px;font-size:11.5px;border:1px solid}
 .vtag.high{background:var(--orange-soft);color:var(--orange);border-color:#E8D8C2}
@@ -405,7 +410,11 @@ details.acc > summary .tip{font-weight:400;font-size:12px;color:var(--ink-3)}
 .prog-fill{height:100%;background:var(--green)}
 .word-card{padding:clamp(20px,4vw,34px);background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--radius);text-align:center}
 .word-en{font-family:var(--font-exam);font-size:clamp(30px,7vw,46px);font-weight:600;letter-spacing:.01em}
-.word-ph{font-family:var(--font-exam);font-size:15px;color:var(--ink-3);margin-top:6px}
+.word-ph{margin-top:10px;display:inline-flex;align-items:center;gap:7px;padding:4px 13px;background:var(--paper);border:1px solid var(--rule-2);border-radius:16px;font-family:var(--font-exam);font-size:15px;color:var(--ink-2)}
+.word-ph:hover,.word-ph:active{color:var(--navy);background:var(--navy-soft);border-color:#CFDDE9}
+.word-ph .spk{font-family:var(--font-ui);font-size:13px}
+.speak-mini{margin-left:8px;padding:0 6px;border:1px solid var(--rule-2);border-radius:10px;font-size:12px;line-height:19px;vertical-align:2px;color:var(--ink-3)}
+.speak-mini:hover{color:var(--navy);border-color:var(--navy-2);background:var(--navy-soft)}
 .word-cn{margin-top:14px;font-size:17px;line-height:1.8}
 .word-eg{margin-top:14px;padding-top:14px;border-top:1px dashed var(--rule-2);font-family:var(--font-exam);font-size:15.5px;line-height:1.75;text-align:left}
 .word-eg .tag{font-family:var(--font-ui);font-size:12px;color:var(--ink-3);margin-right:6px}
@@ -581,6 +590,7 @@ footer{border-top:1px solid var(--rule-2);background:var(--surface);margin-top:1
         2026 年下半年全国大学英语六级笔试：<b>12 月 12 日 15:00–17:25</b><br>
         起点 <b>389</b> 分 · 保底 <b>425</b> 分 · 冲刺 <b>500+</b> · 主攻 <b>仔细阅读</b>
       </p>
+      <button type="button" class="sync-chip" id="syncChip">☁ 云同步：未开启 · 点这里开启</button>
     </div>
     <div class="hud">
       <div class="hud-item soon">
@@ -786,8 +796,31 @@ footer{border-top:1px solid var(--rule-2);background:var(--surface);margin-top:1
   <section class="view" id="view-plan" role="tabpanel" aria-label="备考规划" hidden>
     <header class="sec-head">
       <h2>备考规划</h2>
-      <p>按今天到 12 月 12 日的实际天数排的十周计划，重心压在仔细阅读上。每周的完成标记存在本机，下次打开还在。</p>
+      <p>按今天到 12 月 12 日的实际天数排的十周计划，重心压在仔细阅读上。每周的完成标记存在本机，下次打开还在；开启下面的云同步后，手机和电脑共用同一份。</p>
     </header>
+    <div class="panel" id="syncPanel">
+      <h3 class="panel-title">云同步<span class="meta" id="syncState">未开启</span></h3>
+      <div id="syncOff">
+        <p class="hint">现在进度只留在「这一台浏览器」里，所以电脑、手机、微信、QQ 打开都是各算各的。开启后，背词记录、生词本、十周计划勾选、成绩和限时刷题记录会自动同步到所有设备，换设备打开就是最新进度。</p>
+        <ol class="howto" style="margin-top:12px">
+          <li>先登录自己的 GitHub 账号，打开 <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=cet6-progress-sync" target="_blank" rel="noopener">github.com/settings/tokens/new</a>（权限已经替你勾好了，只勾 gist），滑到最下面点「Generate token」。</li>
+          <li>复制生成的 <code>ghp_</code> 开头令牌，粘贴到下面输入框，点「连接并同步」。</li>
+          <li>在手机 / 微信 / QQ 的浏览器里打开本页，粘贴同一个令牌连接一次。以后不用再操作，打开永远是最新进度。</li>
+        </ol>
+        <div style="margin-top:14px">
+          <div class="hint" style="margin:0 0 6px">GitHub 令牌（只存在本机浏览器，不会写进网页，别人看不到）</div>
+          <input class="tool-input" type="password" id="syncTokenIn" style="width:100%" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="GitHub 令牌">
+        </div>
+        <div class="btn-row"><button class="btn" id="syncConnect">连接并同步</button></div>
+      </div>
+      <div id="syncOn" hidden>
+        <p class="hint" id="syncInfo"></p>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn" id="syncNow">立即同步</button>
+          <button class="btn ghost" id="syncOut">断开本机</button>
+        </div>
+      </div>
+    </div>
     <div class="panel">
       <h3 class="panel-title">分数目标分解<span class="meta">总缺口 36 分</span></h3>
       <div id="goalTable" class="bars"></div>
@@ -805,7 +838,7 @@ footer{border-top:1px solid var(--rule-2);background:var(--surface);margin-top:1
   <section class="view" id="view-wrong" role="tabpanel" aria-label="错题本" hidden>
     <header class="sec-head">
       <h2>待复习本</h2>
-      <p>在真题精讲里点 ☆ 收藏的题都会留在这里，作为二轮复习清单。数据存在浏览器本机（换浏览器或清理浏览数据会丢失）。</p>
+      <p>在真题精讲里点 ☆ 收藏的题都会留在这里，作为二轮复习清单。数据存在浏览器本机；在「备考规划 → 云同步」里开启后，换浏览器、换手机也会自动带过来。</p>
     </header>
     <div class="filters" id="wrongFilters"></div>
     <div class="list" id="wrongList"></div>
@@ -1428,8 +1461,21 @@ const store = {
   },
   set(key, value){
     try { localStorage.setItem("cet6." + key, JSON.stringify(value)); } catch (e) {}
+    if (sync) onLocalChange(key);   /* 记下修改时间，交给云同步（见 P 节） */
   }
 };
+
+/* 云同步状态（P 节初始化；这里先声明，方便 store.set 回调） */
+let sync = null;
+const SYNC_KEYS = ["scores", "wrong", "tasks", "words", "mastered", "wordDay", "wordSize", "wordBank", "examSession", "examRecords"];
+function onLocalChange(key){
+  if (!sync || SYNC_KEYS.indexOf(key) < 0) return;
+  sync.meta[key] = Date.now();
+  store.set("syncMeta", sync.meta);
+  if (!sync.token || !sync.gist) return;
+  clearTimeout(sync.timer);
+  sync.timer = setTimeout(() => syncPush(true), 2500);
+}
 
 const state = {
   scores: Object.assign({}, DEFAULTS, store.get("scores", {})),
@@ -1633,6 +1679,39 @@ function speak(text, rate){
 }
 function stopSpeak(){ if ("speechSynthesis" in window) window.speechSynthesis.cancel(); }
 
+/* 单词发音：优先用浏览器内置语音合成，没有语音包时退回在线发音 */
+let dictAudio = null;
+function playDictAudio(word){
+  try{
+    if (dictAudio) dictAudio.pause();
+    dictAudio = new Audio("https://dict.youdao.com/dictvoice?type=2&audio=" + encodeURIComponent(word));
+    dictAudio.onerror = () => toast("在线发音没加载出来，换 Chrome / Edge 试试");
+    const p = dictAudio.play();
+    if (p && p.catch) p.catch(() => toast("这台设备放不出声音，换 Chrome / Edge 试试"));
+  } catch (e){ toast("这台设备放不出声音，换 Chrome / Edge 试试"); }
+}
+function sayWord(word){
+  if (!word) return;
+  const synth = window.speechSynthesis;
+  const voices = synth ? (synth.getVoices() || []) : [];
+  if (!synth || !voices.length){ playDictAudio(word); return; }
+  try{
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(word);
+    u.lang = "en-US";
+    u.rate = 0.9;
+    const voice = voices.find(v => /^en[-_](US|GB)/i.test(v.lang)) || voices.find(v => /^en/i.test(v.lang));
+    if (voice) u.voice = voice;
+    u.onerror = () => playDictAudio(word);
+    synth.speak(u);
+  } catch (e){ playDictAudio(word); }
+}
+/* 音标按钮统一在这里接事件（单词卡片 / 词汇列表 / 生词本共用） */
+document.addEventListener("click", e => {
+  const b = e.target && e.target.closest ? e.target.closest("[data-say]") : null;
+  if (b){ e.preventDefault(); sayWord(b.dataset.say); }
+});
+
 /* =====================================================================
    E. 错题本
    ===================================================================== */
@@ -1664,8 +1743,9 @@ function renderWrong(){
   host.innerHTML = list.map(w => {
     const correctText = typeof w.correct === "number" ? KEY_LETTER[w.correct] : (w.correct || "?");
     if (w.mode === "word"){
+      const sayText = String(w.key || w.item || "").replace(/^w:/, "");
       return `<article class="wrong-item" style="border-left-color:var(--navy)">
-        <h3>${w.stem}</h3>
+        <h3>${w.stem}<button type="button" class="speak-mini" data-say="${sayText}" title="点击朗读" aria-label="朗读 ${sayText}">🔊</button></h3>
         <div class="from">来自：${w.from}</div>
         <div class="why">${w.why}</div>
         <div class="btn-row" style="margin-top:10px">
@@ -2605,7 +2685,7 @@ function renderWordCard(show){
     <h3 class="panel-title">第 ${idx + 1} / ${day.queue.length} 词<span class="meta">${entry.lv === "high" ? "高频必考" : "认知词"} · ${entry.src === "new" ? "新增词汇" : "大纲 5500"} · 等级 ${st.s || 0}</span></h3>
     <div class="word-card">
       <div class="word-en">${entry.w}</div>
-      ${entry.ph ? `<div class="word-ph">${entry.ph}</div>` : ""}
+      ${entry.ph ? `<button type="button" class="word-ph" data-say="${entry.w}" title="点击朗读 ${entry.w}" aria-label="点这里朗读 ${entry.w}">${entry.ph}<span class="spk">🔊</span></button>` : ""}
       <div id="wordCn" ${state.wordRevealed ? "" : "hidden"}>
         <div class="word-cn">${entry.cn}</div>
         ${entry.eg ? `<div class="word-eg"><span class="tag">例句</span>${entry.eg.s}${entry.eg.zh ? `<br><span class="tag">译文</span>${entry.eg.zh}` : ""}</div>` : ""}
@@ -2755,7 +2835,7 @@ function renderVocab(){
     return `<div class="vcard${state.vocab.mem ? " mem" : ""}" data-vcard="${x.w}">
       <div class="vcard-head">
         <div>
-          <span class="word">${x.w}</span>${x.ph ? `<span class="ph">${x.ph}</span>` : ""}
+          <span class="word">${x.w}</span>${x.ph ? `<button type="button" class="ph" data-say="${x.w}" title="点击朗读 ${x.w}" aria-label="点这里朗读 ${x.w}">${x.ph} 🔊</button>` : ""}
           <div class="mini">${level}${src}${topics}${x.f ? `<span>真题出现 ${x.f} 次</span>` : ""}</div>
         </div>
         <button class="tool-btn" data-vtoggle="${x.w}">展开</button>
@@ -3854,6 +3934,215 @@ function renderCountdown(){
   $("#hudDays").textContent = days > 0 ? days : 0;
 }
 
+/* =====================================================================
+   P. 云同步
+   把一个小的进度文件放在你自己的 GitHub 私密 gist 里，多设备自动双向同步。
+   每个 key 各带自己的修改时间：谁最后改的谁说了算，不会整包互相覆盖。
+   ===================================================================== */
+const SYNC_FILE = "cet6-progress.json";
+const SYNC_STATE_MAP = {
+  scores: "scores", wrong: "wrong", tasks: "taskDone", words: "words", mastered: "mastered",
+  wordDay: "wordDay", wordSize: "wordSize", wordBank: "wordBank",
+  examSession: "examSession", examRecords: "examRecords"
+};
+
+sync = {
+  token: store.get("syncToken", ""),
+  gist: store.get("syncGist", ""),
+  meta: store.get("syncMeta", {}),
+  at: store.get("syncAt", 0),
+  busy: false, timer: null, lastPull: 0, needPush: false, msg: ""
+};
+
+function rawGet(key){
+  try { const r = localStorage.getItem("cet6." + key); return r ? JSON.parse(r) : null; }
+  catch (e){ return null; }
+}
+function fmtTime(ts){
+  const d = new Date(ts), p = n => (n < 10 ? "0" + n : "" + n);
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function errHint(e){
+  const m = (e && e.message) || "未知错误";
+  return /Failed to fetch|NetworkError|Load failed|network/i.test(m) ? "连不上 GitHub，换个网络再试" : m;
+}
+function ghApi(path, opts){
+  const o = Object.assign({ method: "GET" }, opts);
+  o.headers = Object.assign({ Authorization: "Bearer " + sync.token, Accept: "application/vnd.github+json" }, o.headers || {});
+  if (o.body) o.headers["Content-Type"] = "application/json";
+  return fetch("https://api.github.com" + path, o);
+}
+
+/* 本机快照：每个 key 带上「本机最后修改时间」 */
+function syncSnapshot(){
+  const data = {};
+  SYNC_KEYS.forEach(k => {
+    const v = rawGet(k);
+    if (v === null){ data[k] = { v: null, t: 0 }; return; }
+    if (!sync.meta[k]) sync.meta[k] = Date.now();
+    data[k] = { v, t: sync.meta[k] };
+  });
+  return { v: 1, at: Date.now(), data };
+}
+
+function setSyncNote(text, kind){
+  const st = $("#syncState"), chip = $("#syncChip"), on = !!(sync.token && sync.gist);
+  if (st) st.textContent = text;
+  if (chip){
+    chip.dataset.on = on ? "1" : "0";
+    chip.dataset.err = kind === "err" ? "1" : "0";
+    chip.textContent = !on ? "☁ 云同步：未开启 · 点这里开启"
+      : kind === "err" ? "☁ 云同步：出错了 · 点这里处理"
+      : "☁ 云同步：已开启 · " + text;
+  }
+}
+function renderSyncPanel(){
+  const on = !!(sync.token && sync.gist);
+  $("#syncOff").hidden = on;
+  $("#syncOn").hidden = !on;
+  if (!on){ setSyncNote("未开启"); return; }
+  $("#syncInfo").innerHTML = (sync.at ? `最近一次同步：<b>${fmtTime(sync.at)}</b>。` : "还没同步过。")
+    + "背词记录、生词本、周计划勾选、成绩、限时刷题记录都已经跟云端打通，改动会在几秒后自动上传，回到本页也会自动拉取最新进度。"
+    + "想在这台设备之外再用，就在那台设备上粘贴同一个令牌连接一次。"
+    + (sync.msg ? `<br><span style="color:var(--red)">${sync.msg}</span>` : "");
+  setSyncNote(sync.msg ? sync.msg : (sync.at ? "已同步 · " + fmtTime(sync.at) : "已开启"), sync.msg ? "err" : "");
+}
+
+function applyRemote(key, v){
+  const field = SYNC_STATE_MAP[key];
+  if (!field) return;
+  state[field] = key === "scores" ? Object.assign({}, DEFAULTS, v) : v;
+}
+
+async function syncPush(silent){
+  if (!sync.token || !sync.gist || sync.busy) return;
+  sync.busy = true;
+  try{
+    const body = JSON.stringify({ files: { [SYNC_FILE]: { content: JSON.stringify(syncSnapshot()) } } });
+    const r = await ghApi("/gists/" + sync.gist, { method: "PATCH", body });
+    if (!r.ok) throw new Error(r.status === 401 ? "令牌失效，请重新连接" : "HTTP " + r.status);
+    store.set("syncMeta", sync.meta);
+    sync.at = Date.now(); store.set("syncAt", sync.at);
+    sync.msg = ""; setSyncNote("已同步 · " + fmtTime(sync.at));
+  } catch (e){
+    sync.msg = "上传失败：" + errHint(e); setSyncNote(sync.msg, "err");
+    if (!silent) toast(sync.msg);
+  } finally { sync.busy = false; }
+}
+
+async function syncPull(silent){
+  if (!sync.token || !sync.gist || sync.busy) return;
+  if (Date.now() - sync.lastPull < 15000) return;
+  sync.lastPull = Date.now();
+  sync.busy = true;
+  let got = 0;
+  try{
+    const r = await ghApi("/gists/" + sync.gist);
+    if (r.status === 401) throw new Error("令牌失效，请点「断开本机」再重新连接");
+    if (r.status === 404) throw new Error("云端文件不见了，请重新连接");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const g = await r.json();
+    const f = g.files && g.files[SYNC_FILE];
+    if (!f || f.truncated) throw new Error("云端数据读不出来");
+    const doc = JSON.parse(f.content || "{}");
+    if (!doc || !doc.data) throw new Error("云端数据格式不对");
+    SYNC_KEYS.forEach(k => {
+      const cell = doc.data[k];
+      if (!cell || cell.v === null || cell.v === undefined) return;
+      const lt = sync.meta[k] || 0;
+      if (cell.t > lt || (lt === 0 && rawGet(k) === null)){
+        localStorage.setItem("cet6." + k, JSON.stringify(cell.v));
+        sync.meta[k] = cell.t;
+        applyRemote(k, cell.v);
+        got++;
+      }
+    });
+    store.set("syncMeta", sync.meta);
+    sync.at = Date.now(); store.set("syncAt", sync.at);
+    /* 本机有比云端更新的改动（比如刚才离线时改的）→ 顺手推上去 */
+    sync.needPush = SYNC_KEYS.some(k => (sync.meta[k] || 0) > ((doc.data[k] && doc.data[k].t) || 0));
+    sync.msg = ""; setSyncNote("已同步 · " + fmtTime(sync.at));
+    if (got){ rerenderAll(); if (!silent) toast(`已拉取云端进度（${got} 项）`); }
+  } catch (e){
+    sync.msg = "同步失败：" + errHint(e); setSyncNote(sync.msg, "err");
+    if (!silent) toast(sync.msg);
+  } finally {
+    sync.busy = false;
+    if (sync.needPush){ sync.needPush = false; syncPush(true); }
+  }
+}
+
+async function syncConnect(){
+  const input = $("#syncTokenIn"), btn = $("#syncConnect");
+  const token = (input.value || "").trim();
+  if (!token){ toast("先粘贴 GitHub 令牌"); return; }
+  btn.disabled = true; btn.textContent = "正在连接…";
+  const before = sync.token;
+  sync.token = token;
+  try{
+    const me = await ghApi("/user");
+    if (me.status === 401) throw new Error("令牌无效或已过期，请重新生成");
+    if (!me.ok) throw new Error("HTTP " + me.status);
+    const list = await ghApi("/gists?per_page=100");
+    if (!list.ok) throw new Error("读取已有文件失败 HTTP " + list.status);
+    const gists = await list.json();
+    const found = Array.isArray(gists) ? gists.find(g => g.files && g.files[SYNC_FILE]) : null;
+    if (found){
+      sync.gist = found.id;
+    } else {
+      const r = await ghApi("/gists", { method: "POST", body: JSON.stringify({
+        description: "六级学习进度（本平台自动同步，请勿删除）",
+        public: false,
+        files: { [SYNC_FILE]: { content: JSON.stringify(syncSnapshot()) } }
+      })});
+      if (!r.ok) throw new Error("创建云端文件失败 HTTP " + r.status);
+      sync.gist = (await r.json()).id;
+    }
+    store.set("syncToken", sync.token);
+    store.set("syncGist", sync.gist);
+    input.value = "";
+    sync.lastPull = 0; sync.msg = "";
+    await syncPull(false);
+    await syncPush(true);
+    renderSyncPanel();
+    toast(found ? "已连接，已同步云端进度" : "已开启云同步");
+  } catch (e){
+    sync.token = before; sync.gist = store.get("syncGist", ""); sync.msg = "";
+    toast("连接失败：" + errHint(e));
+    renderSyncPanel();
+  } finally {
+    btn.disabled = false; btn.textContent = "连接并同步";
+  }
+}
+function syncDisconnect(){
+  if (!confirm("断开后这台设备不再自动同步（本机已有进度保留）。要继续吗？")) return;
+  sync.token = ""; sync.gist = ""; sync.meta = {}; sync.at = 0; sync.msg = "";
+  store.set("syncToken", ""); store.set("syncGist", ""); store.set("syncMeta", {}); store.set("syncAt", 0);
+  renderSyncPanel();
+  toast("已断开云同步");
+}
+function rerenderAll(){
+  renderCountdown(); renderDiagnosis(); renderGoalTable(); renderReal(); renderWordPlan();
+  renderWords(); renderVocab(); renderEssay(); renderTrans(); renderWeeks(); renderStrategy();
+  renderWrong(); renderExam(); updateWrongBadge();
+}
+function syncInit(){
+  $("#syncConnect").addEventListener("click", syncConnect);
+  $("#syncTokenIn").addEventListener("keydown", e => { if (e.key === "Enter") syncConnect(); });
+  $("#syncNow").addEventListener("click", () => { sync.lastPull = 0; syncPull(false); });
+  $("#syncOut").addEventListener("click", syncDisconnect);
+  $("#syncChip").addEventListener("click", () => {
+    switchView("plan");
+    const p = $("#syncPanel");
+    if (p) p.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  renderSyncPanel();
+  if (sync.token && sync.gist) syncPull(true);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncPull(true); });
+  window.addEventListener("focus", () => syncPull(true));
+  setInterval(() => { if (document.visibilityState === "visible") syncPull(true); }, 60000);
+}
+
 function init(){
   loadExamState();
   renderCountdown();
@@ -3873,6 +4162,7 @@ function init(){
   const view = (location.hash || "#dx").slice(1).split("/")[0];
   if ($("#view-" + view)) switchView(view);
   if ("speechSynthesis" in window) window.speechSynthesis.getVoices();
+  syncInit();
 }
 init();
 </script>
